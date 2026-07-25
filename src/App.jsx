@@ -12,14 +12,14 @@ export default function App() {
   // --- Estados de Datos de Entrada (Formulario) ---
   const [clienteName, setClienteName] = useState('');
   const [vehiculoModelo, setVehiculoModelo] = useState('');
-  const [montoVenta, setMontoVenta] = useState(42000);
-  const [montoInicial, setMontoInicial] = useState(12000);
+  const [montoVenta, setMontoVenta] = useState();
+  const [montoInicial, setMontoInicial] = useState();
   
   // Nuevos estados para comisiones y gastos
-  const [porcentajeFlash, setPorcentajeFlash] = useState(0); 
-  const [gastosAdmin, setGastosAdmin] = useState(0);
+  const [porcentajeFlash, setPorcentajeFlash] = useState(3); 
+  const [gastosAdmin, setGastosAdmin] = useState();
 
-  const [tasaMensual, setTasaMensual] = useState( ); 
+  const [tasaMensual, setTasaMensual] = useState(3); 
   const [plazo, setPlazo] = useState( ); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
   
