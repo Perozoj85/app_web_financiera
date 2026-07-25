@@ -19,17 +19,17 @@ export default function App() {
   const [porcentajeFlash, setPorcentajeFlash] = useState(0); 
   const [gastosAdmin, setGastosAdmin] = useState(0);
 
-  const [tasaMensual, setTasaMensual] = useState(1.5); 
-  const [plazo, setPlazo] = useState(36); 
+  const [tasaMensual, setTasaMensual] = useState( ); 
+  const [plazo, setPlazo] = useState( ); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
   
   // Condiciones particulares del crédito
-  const [condiciones, setCondiciones] = useState('Ingrese Condiciones');
+  const [condiciones, setCondiciones] = useState(' ');
   const [sistema, setSistema] = useState('frances'); // 'frances' o 'aleman'
   
   // --- Estados de Configuración ---
   const [currencyKey, setCurrencyKey] = useState('USD');
-  const [concesionariaName, setConcesionariaName] = useState('Grupo de Empresas Atef Nemer');
+  const [concesionariaName, setConcesionariaName] = useState(' ');
   const [activeTab, setActiveTab] = useState('resumen'); // 'resumen' o 'tabla'
   const [pdfGenerating, setPdfGenerating] = useState(false);
   
