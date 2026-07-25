@@ -14,11 +14,6 @@ export default function App() {
   const [vehiculoModelo, setVehiculoModelo] = useState('');
   const [montoVenta, setMontoVenta] = useState(42000);
   const [montoInicial, setMontoInicial] = useState(12000);
-  
-  // Nuevos estados para comisiones y gastos
-  const [porcentajeFlash, setPorcentajeFlash] = useState(0); 
-  const [gastosAdmin, setGastosAdmin] = useState(0);
-
   const [tasaMensual, setTasaMensual] = useState(1.5); 
   const [plazo, setPlazo] = useState(36); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
@@ -49,21 +44,10 @@ export default function App() {
     }, 4500);
   };
 
-  // --- CÁLCULOS PRINCIPALES ---
-  // 1. Monto base (Vehículo - Enganche)
-  const montoFinanciarBase = useMemo(() => {
-    return Math.max(0, montoVenta - montoInicial);
-  }, [montoVenta, montoInicial]);
-
-  // 2. Comisión Flash calculada sobre el monto base
-  const montoComisionFlash = useMemo(() => {
-    return montoFinanciarBase * (porcentajeFlash / 100);
-  }, [montoFinanciarBase, porcentajeFlash]);
-
-  // 3. Monto total a financiar (Base + Comisión Flash + Gastos Administrativos)
   const montoFinanciar = useMemo(() => {
-    return montoFinanciarBase + montoComisionFlash + gastosAdmin;
-  }, [montoFinanciarBase, montoComisionFlash, gastosAdmin]);
+    const total = montoVenta - montoInicial;
+    return total > 0 ? total : 0;
+  }, [montoVenta, montoInicial]);
 
   const formatCurrency = (value) => {
     const cfg = CURRENCIES[currencyKey] || CURRENCIES.USD;
@@ -228,11 +212,7 @@ export default function App() {
           { content: 'ENGANCHE (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(montoInicial)} (${((montoInicial/montoVenta)*100).toFixed(1)}%)`
         ],
         [
-          { content: `COMISIÓN FLASH (${porcentajeFlash}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlash),
-          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(gastosAdmin)
-        ],
-        [
-          { content: 'MONTO TOTAL A FINANCIAR:', fontStyle: 'bold', textColor: [15, 23, 42] }, formatCurrency(montoFinanciar),
+          { content: 'MONTO FINANCIADO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoFinanciar),
           { content: 'PLAZO TOTAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${plazo} Meses`
         ],
         [
@@ -246,7 +226,7 @@ export default function App() {
         startY: 61,
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 2, font: 'Helvetica' },
-        columnStyles: { 0: { width: 50, fontStyle: 'bold' }, 1: { width: 45 }, 2: { width: 50, fontStyle: 'bold' }, 3: { width: 45 } }
+        columnStyles: { 0: { width: 45, fontStyle: 'bold' }, 1: { width: 50 }, 2: { width: 45, fontStyle: 'bold' }, 3: { width: 50 } }
       });
 
       let currentY = doc.lastAutoTable.finalY + 4;
@@ -396,9 +376,6 @@ export default function App() {
     if (!newWindow) window.location.href = pendingPdfBlobUrl;
   };
 
-  // Valor usado para calcular los anchos de barra en el resumen
-  const montoTotalReferencia = (montoVenta + montoComisionFlash + gastosAdmin + financialData.totalIntereses) || 1;
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
       <header className="bg-slate-900 text-white shadow-xl py-5 px-6 transition-colors duration-300">
@@ -506,33 +483,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* SECCIÓN NUEVA: Gastos extra que se suman al financiamiento */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flash (%)</label>
-                  <div className="relative">
-                    <input type="number" step="0.1" value={porcentajeFlash} onChange={(e) => setPorcentajeFlash(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" placeholder="0.0" />
-                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs font-bold">%</span>
-                  </div>
-                  {porcentajeFlash > 0 && (
-                    <div className="text-[10px] text-slate-500 font-medium mt-1 text-right">
-                      + {formatCurrency(montoComisionFlash)}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Gastos Admin.</label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
-                    <input type="number" value={gastosAdmin} onChange={(e) => setGastosAdmin(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" placeholder="0" />
-                  </div>
-                </div>
-              </div>
-
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex justify-between items-center shadow-inner">
                 <div>
                   <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider">Monto a Financiar</span>
-                  <span className="text-[10px] text-slate-500 leading-tight block">(Base + Comisiones + Admin)</span>
+                  <span className="text-xs text-slate-500">(Financiamiento)</span>
                 </div>
                 <div className="text-right">
                   <span className="text-lg font-black text-blue-700 font-mono">{formatCurrency(montoFinanciar)}</span>
@@ -601,7 +555,7 @@ export default function App() {
               <span className="text-lg font-extrabold text-slate-900 block mt-1.5 font-mono">{formatCurrency(financialData.cuotaMensualEstimada)}</span>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wide">Financiado Total</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wide">Financiado Neto</span>
               <span className="text-lg font-extrabold text-slate-900 block mt-1.5 font-mono">{formatCurrency(montoFinanciar)}</span>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -635,19 +589,8 @@ export default function App() {
                     <span className="text-slate-500">Pago Inicial:</span>
                     <strong className="text-slate-800">{formatCurrency(montoInicial)}</strong>
                   </div>
-                  
-                  {/* Nuevas filas de datos de control para las comisiones */}
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500">Comisión Flash ({porcentajeFlash}%):</span>
-                    <strong className="text-slate-800">{formatCurrency(montoComisionFlash)}</strong>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500">Gastos Administrativos:</span>
-                    <strong className="text-slate-800">{formatCurrency(gastosAdmin)}</strong>
-                  </div>
-
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500">Total a Financiar:</span>
+                    <span className="text-slate-500">Neto a Financiar:</span>
                     <strong className="text-blue-600 font-bold">{formatCurrency(montoFinanciar)}</strong>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
@@ -666,16 +609,16 @@ export default function App() {
                       <span className="font-bold">{formatCurrency(montoInicial)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full" style={{ width: `${(montoInicial/montoTotalReferencia)*100}%` }} />
+                      <div className="bg-emerald-500 h-full" style={{ width: `${(montoInicial/(montoVenta + financialData.totalIntereses || 1))*100}%` }} />
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-500">Capital Financiado (Base + Comisiones)</span>
+                      <span className="text-slate-500">Capital Financiado</span>
                       <span className="font-bold">{formatCurrency(montoFinanciar)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-blue-600 h-full" style={{ width: `${(montoFinanciar/montoTotalReferencia)*100}%` }} />
+                      <div className="bg-blue-600 h-full" style={{ width: `${(montoFinanciar/(montoVenta + financialData.totalIntereses || 1))*100}%` }} />
                     </div>
                   </div>
                   <div>
@@ -684,7 +627,7 @@ export default function App() {
                       <span className="font-bold text-amber-600">{formatCurrency(financialData.totalIntereses)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-amber-500 h-full" style={{ width: `${(financialData.totalIntereses/montoTotalReferencia)*100}%` }} />
+                      <div className="bg-amber-500 h-full" style={{ width: `${(financialData.totalIntereses/(montoVenta + financialData.totalIntereses || 1))*100}%` }} />
                     </div>
                   </div>
                 </div>
