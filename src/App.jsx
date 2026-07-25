@@ -12,24 +12,24 @@ export default function App() {
   // --- Estados de Datos de Entrada (Formulario) ---
   const [clienteName, setClienteName] = useState('');
   const [vehiculoModelo, setVehiculoModelo] = useState('');
-  const [montoVenta, setMontoVenta] = useState();
-  const [montoInicial, setMontoInicial] = useState();
+  const [montoVenta, setMontoVenta] = useState(42000);
+  const [montoInicial, setMontoInicial] = useState(12000);
   
-  // Nuevos estados para comisiones y gastos
-  const [porcentajeFlash, setPorcentajeFlash] = useState(3); 
-  const [gastosAdmin, setGastosAdmin] = useState();
+  // Estados para comisiones y gastos
+  const [porcentajeFlash, setPorcentajeFlash] = useState(0); 
+  const [gastosAdmin, setGastosAdmin] = useState(0);
 
-  const [tasaMensual, setTasaMensual] = useState(3); 
-  const [plazo, setPlazo] = useState( ); 
+  const [tasaMensual, setTasaMensual] = useState(1.5); 
+  const [plazo, setPlazo] = useState(36); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
   
   // Condiciones particulares del crédito
-  const [condiciones, setCondiciones] = useState(' ');
+  const [condiciones, setCondiciones] = useState('Ingrese Condiciones');
   const [sistema, setSistema] = useState('frances'); // 'frances' o 'aleman'
   
   // --- Estados de Configuración ---
   const [currencyKey, setCurrencyKey] = useState('USD');
-  const [concesionariaName, setConcesionariaName] = useState(' ');
+  const [concesionariaName, setConcesionariaName] = useState('Grupo de Empresas Atef Nemer');
   const [activeTab, setActiveTab] = useState('resumen'); // 'resumen' o 'tabla'
   const [pdfGenerating, setPdfGenerating] = useState(false);
   
@@ -50,19 +50,23 @@ export default function App() {
   };
 
   // --- CÁLCULOS PRINCIPALES ---
-  // 1. Monto base (Vehículo - Enganche)
+  // 1. Monto base (Vehículo - Enganche) Aseguramos que los inputs puedan ser texto vacío temporalmente
   const montoFinanciarBase = useMemo(() => {
-    return Math.max(0, montoVenta - montoInicial);
+    const venta = Number(montoVenta) || 0;
+    const inicial = Number(montoInicial) || 0;
+    return Math.max(0, venta - inicial);
   }, [montoVenta, montoInicial]);
 
   // 2. Comisión Flash calculada sobre el monto base
   const montoComisionFlash = useMemo(() => {
-    return montoFinanciarBase * (porcentajeFlash / 100);
+    const flash = Number(porcentajeFlash) || 0;
+    return montoFinanciarBase * (flash / 100);
   }, [montoFinanciarBase, porcentajeFlash]);
 
   // 3. Monto total a financiar (Base + Comisión Flash + Gastos Administrativos)
   const montoFinanciar = useMemo(() => {
-    return montoFinanciarBase + montoComisionFlash + gastosAdmin;
+    const gastos = Number(gastosAdmin) || 0;
+    return montoFinanciarBase + montoComisionFlash + gastos;
   }, [montoFinanciarBase, montoComisionFlash, gastosAdmin]);
 
   const formatCurrency = (value) => {
@@ -77,7 +81,7 @@ export default function App() {
 
   const financialData = useMemo(() => {
     const P = montoFinanciar;
-    const r = tasaMensual / 100;
+    const r = (Number(tasaMensual) || 0) / 100;
     const n = Math.max(1, parseInt(plazo) || 1);
 
     if (P <= 0 || n <= 0) {
@@ -218,25 +222,29 @@ export default function App() {
       doc.setTextColor(...primaryColorRGB);
       doc.text('1. INFORMACIÓN DE LA OPERACIÓN', 15, 58);
 
+      const realMontoVenta = Number(montoVenta) || 0;
+      const realMontoInicial = Number(montoInicial) || 0;
+      const pFlash = Number(porcentajeFlash) || 0;
+
       const infoData = [
         [
           { content: 'CLIENTE:', fontStyle: 'bold', textColor: [71, 85, 105] }, clienteName.toUpperCase(),
           { content: 'VEHÍCULO COTIZADO:', fontStyle: 'bold', textColor: [71, 85, 105] }, vehiculoModelo
         ],
         [
-          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoVenta),
-          { content: 'ENGANCHE (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(montoInicial)} (${((montoInicial/montoVenta)*100).toFixed(1)}%)`
+          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(realMontoVenta),
+          { content: 'ENGANCHE (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
         ],
         [
-          { content: `COMISIÓN FLASH (${porcentajeFlash}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlash),
-          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(gastosAdmin)
+          { content: `COMISIÓN FLASH (${pFlash}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlash),
+          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(Number(gastosAdmin) || 0)
         ],
         [
           { content: 'MONTO TOTAL A FINANCIAR:', fontStyle: 'bold', textColor: [15, 23, 42] }, formatCurrency(montoFinanciar),
           { content: 'PLAZO TOTAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${plazo} Meses`
         ],
         [
-          { content: 'TASA INTERÉS PACTADA:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${tasaMensual}% Mensual`,
+          { content: 'TASA INTERÉS PACTADA:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${Number(tasaMensual) || 0}% Mensual`,
           { content: 'PRIMER VENCIMIENTO:', fontStyle: 'bold', textColor: [71, 85, 105] }, getFechaVencimiento(fechaInicio, 1)
         ]
       ];
@@ -310,11 +318,10 @@ export default function App() {
         `${CURRENCIES[currencyKey].symbol}${formatPDFValue(row.cuotaAPagar)}`
       ]);
 
-      // Corrección de alineación e índice de columnas en el PDF
       const footPDF = [[
         { content: 'TOTALES', colSpan: 2, styles: { halign: 'center' } },
         { content: '', styles: { halign: 'right' } }, // Saldo Capital no se suma
-        { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(montoFinanciar)}`, styles: { halign: 'right' } }, // Total Abonos (Monto Financiado)
+        { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(montoFinanciar)}`, styles: { halign: 'right' } }, 
         { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(financialData.totalIntereses)}`, styles: { halign: 'right' } },
         { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(financialData.totalPagado)}`, styles: { halign: 'right', fontStyle: 'bold' } }
       ]];
@@ -324,7 +331,7 @@ export default function App() {
         showFoot: 'lastPage',
         headStyles: { fillColor: primaryColorRGB, textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold', halign: 'center', valign: 'middle' },
         bodyStyles: { fontSize: 7.5, font: 'Helvetica', textColor: [51, 65, 85] },
-        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold', halign: 'right' }, // Alineado general a la derecha
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold', halign: 'right' },
         columnStyles: { 0: { halign: 'center', cellWidth: 20 }, 1: { halign: 'center', cellWidth: 35 }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right', fontStyle: 'bold' } },
         margin: { top: 15, left: 15, right: 15, bottom: 25 },
         didDrawPage: (data) => {
@@ -396,8 +403,9 @@ export default function App() {
     if (!newWindow) window.location.href = pendingPdfBlobUrl;
   };
 
-  // Valor usado para calcular los anchos de barra en el resumen
-  const montoTotalReferencia = (montoVenta + montoComisionFlash + gastosAdmin + financialData.totalIntereses) || 1;
+  const realMontoVenta = Number(montoVenta) || 0;
+  const realMontoInicial = Number(montoInicial) || 0;
+  const montoTotalReferencia = (realMontoVenta + montoComisionFlash + (Number(gastosAdmin) || 0) + financialData.totalIntereses) || 1;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
@@ -484,14 +492,40 @@ export default function App() {
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto de Venta</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
-                    <input type="number" value={montoVenta} onChange={(e) => { const val = parseFloat(e.target.value) || 0; setMontoVenta(val); if (montoInicial > val) setMontoInicial(val); }} className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" />
+                    <input 
+                      type="number" 
+                      value={montoVenta} 
+                      onChange={(e) => { 
+                        const val = e.target.value;
+                        if(val === '') { setMontoVenta(''); return; }
+                        const num = parseFloat(val); 
+                        setMontoVenta(num); 
+                        if ((Number(montoInicial) || 0) > num) setMontoInicial(num); 
+                      }} 
+                      className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" 
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto Inicial</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
-                    <input type="number" value={montoInicial} onChange={(e) => { const val = parseFloat(e.target.value) || 0; if (val <= montoVenta) { setMontoInicial(val); } else { setMontoInicial(montoVenta); showToast('El enganche no puede superar el costo.', 'warning'); } }} className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-emerald-700" />
+                    <input 
+                      type="number" 
+                      value={montoInicial} 
+                      onChange={(e) => { 
+                        const val = e.target.value;
+                        if(val === '') { setMontoInicial(''); return; }
+                        const num = parseFloat(val); 
+                        if (num <= (Number(montoVenta) || 0)) { 
+                          setMontoInicial(num); 
+                        } else { 
+                          setMontoInicial(Number(montoVenta) || 0); 
+                          showToast('El enganche no puede superar el costo.', 'warning'); 
+                        } 
+                      }} 
+                      className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-emerald-700" 
+                    />
                   </div>
                 </div>
               </div>
@@ -500,9 +534,18 @@ export default function App() {
                 <div>
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="text-slate-500">Enganche:</span>
-                    <span className="font-bold text-emerald-600">{((montoInicial / (montoVenta || 1)) * 100).toFixed(0)}% del valor</span>
+                    <span className="font-bold text-emerald-600">{((realMontoInicial / (realMontoVenta || 1)) * 100).toFixed(1)}% del valor</span>
                   </div>
-                  <input type="range" min="0" max={montoVenta} step={montoVenta / 100 || 1} value={montoInicial} onChange={(e) => setMontoInicial(parseFloat(e.target.value) || 0)} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
+                  {/* Slider arreglado: con step="1" para que no salte, ni fuerce el redondeo en bloques raros */}
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max={realMontoVenta} 
+                    step="1" 
+                    value={realMontoInicial} 
+                    onChange={(e) => setMontoInicial(parseFloat(e.target.value) || 0)} 
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" 
+                  />
                 </div>
               </div>
 
@@ -511,10 +554,21 @@ export default function App() {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flash (%)</label>
                   <div className="relative">
-                    <input type="number" step="0.1" value={porcentajeFlash} onChange={(e) => setPorcentajeFlash(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" placeholder="0.0" />
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={porcentajeFlash} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if(val === '') { setPorcentajeFlash(''); return; }
+                        setPorcentajeFlash(Math.max(0, parseFloat(val)));
+                      }} 
+                      className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" 
+                      placeholder="0.0" 
+                    />
                     <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs font-bold">%</span>
                   </div>
-                  {porcentajeFlash > 0 && (
+                  {Number(porcentajeFlash) > 0 && (
                     <div className="text-[10px] text-slate-500 font-medium mt-1 text-right">
                       + {formatCurrency(montoComisionFlash)}
                     </div>
@@ -524,7 +578,17 @@ export default function App() {
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Gastos Admin.</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
-                    <input type="number" value={gastosAdmin} onChange={(e) => setGastosAdmin(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" placeholder="0" />
+                    <input 
+                      type="number" 
+                      value={gastosAdmin} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if(val === '') { setGastosAdmin(''); return; }
+                        setGastosAdmin(Math.max(0, parseFloat(val)));
+                      }} 
+                      className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" 
+                      placeholder="0" 
+                    />
                   </div>
                 </div>
               </div>
@@ -543,13 +607,35 @@ export default function App() {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tasa Interés (% Mensual)</label>
                   <div className="relative">
-                    <input type="number" step="0.01" value={tasaMensual} onChange={(e) => setTasaMensual(Math.max(0, parseFloat(e.target.value) || 0))} className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" />
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      value={tasaMensual} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if(val === '') { setTasaMensual(''); return; }
+                        setTasaMensual(Math.max(0, parseFloat(val)));
+                      }} 
+                      className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" 
+                    />
                     <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs font-bold">%</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Plazo (Meses)</label>
-                  <input type="number" min="1" max="120" value={plazo} onChange={(e) => { const val = parseInt(e.target.value); setPlazo(isNaN(val) ? '' : Math.max(1, val)); }} className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" placeholder="Mínimo 1 mes" />
+                  <input 
+                    type="number" 
+                    min="1" max="120" 
+                    value={plazo} 
+                    onChange={(e) => { 
+                      const val = e.target.value;
+                      if(val === '') { setPlazo(''); return; }
+                      const num = parseInt(val); 
+                      setPlazo(isNaN(num) ? '' : Math.max(1, num)); 
+                    }} 
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" 
+                    placeholder="Mínimo 1 mes" 
+                  />
                 </div>
               </div>
 
@@ -586,7 +672,7 @@ export default function App() {
                 Resumen Financiero y Gráficos
               </button>
               <button onClick={() => setActiveTab('tabla')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${activeTab === 'tabla' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
-                Plan de Amortización ({plazo})
+                Plan de Amortización ({plazo || 0})
               </button>
             </div>
 
@@ -629,21 +715,21 @@ export default function App() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Precio Venta:</span>
-                    <strong className="text-slate-800">{formatCurrency(montoVenta)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(realMontoVenta)}</strong>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Pago Inicial:</span>
-                    <strong className="text-slate-800">{formatCurrency(montoInicial)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(realMontoInicial)}</strong>
                   </div>
                   
-                  {/* Nuevas filas de datos de control para las comisiones */}
+                  {/* Filas de datos de control para las comisiones */}
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500">Comisión Flash ({porcentajeFlash}%):</span>
+                    <span className="text-slate-500">Comisión Flash ({Number(porcentajeFlash) || 0}%):</span>
                     <strong className="text-slate-800">{formatCurrency(montoComisionFlash)}</strong>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Gastos Administrativos:</span>
-                    <strong className="text-slate-800">{formatCurrency(gastosAdmin)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(Number(gastosAdmin) || 0)}</strong>
                   </div>
 
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
@@ -652,7 +738,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Plazo:</span>
-                    <strong className="text-slate-800">{plazo} Meses</strong>
+                    <strong className="text-slate-800">{plazo || 0} Meses</strong>
                   </div>
                 </div>
               </div>
@@ -663,10 +749,10 @@ export default function App() {
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-slate-500">Enganche (Pago Inicial)</span>
-                      <span className="font-bold">{formatCurrency(montoInicial)}</span>
+                      <span className="font-bold">{formatCurrency(realMontoInicial)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full" style={{ width: `${(montoInicial/montoTotalReferencia)*100}%` }} />
+                      <div className="bg-emerald-500 h-full" style={{ width: `${(realMontoInicial/montoTotalReferencia)*100}%` }} />
                     </div>
                   </div>
                   <div>
@@ -718,7 +804,6 @@ export default function App() {
                       </tr>
                     ))}
                   </tbody>
-                  {/* Corrección de alineación e índice de columnas en la tabla de la App */}
                   <tfoot className="bg-slate-150 border-t-2 border-slate-300 text-xs font-mono">
                     <tr className="font-extrabold text-slate-800">
                       <td colSpan="2" className="py-3 px-4 text-center font-sans uppercase">TOTALES</td>
