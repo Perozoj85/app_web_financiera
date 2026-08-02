@@ -9,40 +9,16 @@ const CURRENCIES = {
 };
 
 export default function App() {
-  /* STREAMING_CHUNK:Inicializando estados y funciones de formateo... */
   // --- Estados de Datos de Entrada (Formulario) ---
   const [clienteName, setClienteName] = useState('');
   const [vehiculoModelo, setVehiculoModelo] = useState('');
-  
-  // Funciones de formateo local (puntos para miles, comas para decimales)
-  const formatNumToLocal = (val) => {
-    if (val === '' || val === null || val === undefined) return '';
-    let clean = val.toString().replace(/[^0-9,]/g, '');
-    const parts = clean.split(',');
-    if (parts.length > 2) clean = parts[0] + ',' + parts.slice(1).join('');
-    let [integer, decimal] = clean.split(',');
-    if (integer) integer = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    else if (clean.startsWith(',')) integer = '0';
-    return decimal !== undefined ? `${integer},${decimal}` : integer;
-  };
-
-  const parseLocalToNum = (val) => {
-    if (!val) return 0;
-    return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
-  };
-
-  // Estados visuales enmascarados para Monedas (con puntos y comas)
-  const [montoVentaStr, setMontoVentaStr] = useState('42.000');
-  const [montoInicialStr, setMontoInicialStr] = useState('12.000');
-  const montoVenta = parseLocalToNum(montoVentaStr);
-  const montoInicial = parseLocalToNum(montoInicialStr);
+  const [montoVenta, setMontoVenta] = useState(42000);
+  const [montoInicial, setMontoInicial] = useState(12000);
   
   // Estados para comisiones y gastos
   const [porcentajeFlat, setPorcentajeFlat] = useState(0); 
-  const [gastosAdminStr, setGastosAdminStr] = useState('');
-  const gastosAdmin = parseLocalToNum(gastosAdminStr);
+  const [gastosAdmin, setGastosAdmin] = useState(0);
 
-  /* STREAMING_CHUNK:Inicializando estados secundarios del crédito... */
   const [tasaMensual, setTasaMensual] = useState(1.5); 
   const [plazo, setPlazo] = useState(36); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
@@ -73,22 +49,24 @@ export default function App() {
     }, 4500);
   };
 
-  /* STREAMING_CHUNK:Lógica matemática de cálculos y comisiones... */
   // --- CÁLCULOS PRINCIPALES ---
-  // 1. Monto base (Vehículo - Pago Inicial)
+  // 1. Monto base (Vehículo - Pago Inicial) Aseguramos que los inputs puedan ser texto vacío temporalmente
   const montoFinanciarBase = useMemo(() => {
-    return Math.max(0, montoVenta - montoInicial);
+    const venta = Number(montoVenta) || 0;
+    const inicial = Number(montoInicial) || 0;
+    return Math.max(0, venta - inicial);
   }, [montoVenta, montoInicial]);
 
   // 2. Comisión Flat calculada sobre el monto base
   const montoComisionFlat = useMemo(() => {
-    const flat = Number(porcentajeFlat) || 0;
-    return montoFinanciarBase * (flat / 100);
+    const Flat = Number(porcentajeFlat) || 0;
+    return montoFinanciarBase * (Flat / 100);
   }, [montoFinanciarBase, porcentajeFlat]);
 
   // 3. Monto total a financiar (Base + Comisión Flat + Gastos Administrativos)
   const montoFinanciar = useMemo(() => {
-    return montoFinanciarBase + montoComisionFlat + gastosAdmin;
+    const gastos = Number(gastosAdmin) || 0;
+    return montoFinanciarBase + montoComisionFlat + gastos;
   }, [montoFinanciarBase, montoComisionFlat, gastosAdmin]);
 
   const formatCurrency = (value) => {
@@ -101,7 +79,6 @@ export default function App() {
     }).format(value);
   };
 
-  /* STREAMING_CHUNK:Lógica de la tabla de amortización... */
   const financialData = useMemo(() => {
     const P = montoFinanciar;
     const r = (Number(tasaMensual) || 0) / 100;
@@ -149,7 +126,7 @@ export default function App() {
       }
     } 
     else {
-      // Plan B con fórmula especifica 
+      // Plan B con fórmula especifica utilizada en oshima
       const interesMensualFijo = P * r;
       const abonoCapitalFijo = P / n;
       const cuotaFijaB = abonoCapitalFijo + interesMensualFijo; 
@@ -198,7 +175,6 @@ export default function App() {
     }
   };
 
-  /* STREAMING_CHUNK:Generador del reporte PDF... */
   const exportToPDF = () => {
     setPdfGenerating(true);
     showToast('Procesando datos y estructurando reporte...', 'info');
@@ -246,6 +222,8 @@ export default function App() {
       doc.setTextColor(...primaryColorRGB);
       doc.text('1. INFORMACIÓN DE LA OPERACIÓN', 15, 58);
 
+      const realMontoVenta = Number(montoVenta) || 0;
+      const realMontoInicial = Number(montoInicial) || 0;
       const pFlat = Number(porcentajeFlat) || 0;
 
       const infoData = [
@@ -254,12 +232,12 @@ export default function App() {
           { content: 'VEHÍCULO COTIZADO:', fontStyle: 'bold', textColor: [71, 85, 105] }, vehiculoModelo
         ],
         [
-          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoVenta),
-          { content: 'PAGO INICIAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(montoInicial)} (${((montoInicial/(montoVenta || 1))*100).toFixed(1)}%)`
+          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(realMontoVenta),
+          { content: 'PAGO INICIAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
         ],
         [
           { content: `COMISIÓN FLAT (${pFlat}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlat),
-          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(gastosAdmin)
+          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(Number(gastosAdmin) || 0)
         ],
         [
           { content: 'MONTO TOTAL A FINANCIAR:', fontStyle: 'bold', textColor: [15, 23, 42] }, formatCurrency(montoFinanciar),
@@ -317,7 +295,6 @@ export default function App() {
         currentY += (splitText.length * 4) + 6;
       }
 
-      /* STREAMING_CHUNK:Tabla PDF y Finalización de Documento... */
       // --- 4. TABLA DE AMORTIZACIÓN ---
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(11);
@@ -392,7 +369,7 @@ export default function App() {
       doc.setFont('Helvetica', 'bold');
       doc.text(concesionariaName.toUpperCase(), 155, finalY + 30, { align: 'center' });
 
-      const cleanFileName = `Plan de Financiamiento ${clienteName.replace(/\s+/g, ' ') || 'Auto'}.pdf`;
+      const cleanFileName = `Plan de Financimiento ${clienteName.replace(/\s+/g, ' ') || 'Auto'}.pdf`;
       const blob = doc.output('blob');
       const blobURL = URL.createObjectURL(blob);
 
@@ -409,7 +386,6 @@ export default function App() {
     }
   };
 
-  /* STREAMING_CHUNK:Eventos de interfaz... */
   const triggerDirectDownload = () => {
     if (!pendingPdfBlobUrl) return;
     const downloadLink = document.createElement('a');
@@ -427,9 +403,10 @@ export default function App() {
     if (!newWindow) window.location.href = pendingPdfBlobUrl;
   };
 
-  const montoTotalReferencia = (montoVenta + montoComisionFlat + gastosAdmin + financialData.totalIntereses) || 1;
+  const realMontoVenta = Number(montoVenta) || 0;
+  const realMontoInicial = Number(montoInicial) || 0;
+  const montoTotalReferencia = (realMontoVenta + montoComisionFlat + (Number(gastosAdmin) || 0) + financialData.totalIntereses) || 1;
 
-  /* STREAMING_CHUNK:Renderizado principal (JSX)... */
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
       <header className="bg-slate-900 text-white shadow-xl py-5 px-6 transition-colors duration-300">
@@ -510,39 +487,40 @@ export default function App() {
                 </div>
               </div>
 
-              /* STREAMING_CHUNK:Campos enmascarados de dinero... */
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto de Venta</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={montoVentaStr} 
+                      type="number" 
+                      value={montoVenta} 
                       onChange={(e) => { 
-                        const formatted = formatNumToLocal(e.target.value);
-                        setMontoVentaStr(formatted); 
-                        const numVenta = parseLocalToNum(formatted);
-                        if (montoInicial > numVenta) setMontoInicialStr(formatted); 
+                        const val = e.target.value;
+                        if(val === '') { setMontoVenta(''); return; }
+                        const num = parseFloat(val); 
+                        setMontoVenta(num); 
+                        if ((Number(montoInicial) || 0) > num) setMontoInicial(num); 
                       }} 
                       className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" 
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pago Inicial</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto Inicial</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={montoInicialStr} 
+                      type="number" 
+                      value={montoInicial} 
                       onChange={(e) => { 
-                        const formatted = formatNumToLocal(e.target.value);
-                        const numInicial = parseLocalToNum(formatted); 
-                        if (numInicial <= montoVenta) { 
-                          setMontoInicialStr(formatted); 
+                        const val = e.target.value;
+                        if(val === '') { setMontoInicial(''); return; }
+                        const num = parseFloat(val); 
+                        if (num <= (Number(montoVenta) || 0)) { 
+                          setMontoInicial(num); 
                         } else { 
-                          setMontoInicialStr(montoVentaStr); 
+                          setMontoInicial(Number(montoVenta) || 0); 
                           showToast('El Pago Inicial no puede superar el costo.', 'warning'); 
                         } 
                       }} 
@@ -556,20 +534,22 @@ export default function App() {
                 <div>
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="text-slate-500">Pago Inicial:</span>
-                    <span className="font-bold text-emerald-600">{((montoInicial / (montoVenta || 1)) * 100).toFixed(1)}% del valor</span>
+                    <span className="font-bold text-emerald-600">{((realMontoInicial / (realMontoVenta || 1)) * 100).toFixed(1)}% del valor</span>
                   </div>
+                  {/* Slider arreglado: con step="1" para que no salte, ni fuerce el redondeo en bloques raros */}
                   <input 
                     type="range" 
                     min="0" 
-                    max={montoVenta} 
+                    max={realMontoVenta} 
                     step="1" 
-                    value={montoInicial} 
-                    onChange={(e) => setMontoInicialStr(formatNumToLocal(e.target.value))} 
+                    value={realMontoInicial} 
+                    onChange={(e) => setMontoInicial(parseFloat(e.target.value) || 0)} 
                     className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" 
                   />
                 </div>
               </div>
 
+              {/* SECCIÓN NUEVA: Gastos extra que se suman al financiamiento */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flat (%)</label>
@@ -599,11 +579,15 @@ export default function App() {
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={gastosAdminStr} 
-                      onChange={(e) => setGastosAdminStr(formatNumToLocal(e.target.value))} 
+                      type="number" 
+                      value={gastosAdmin} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if(val === '') { setGastosAdmin(''); return; }
+                        setGastosAdmin(Math.max(0, parseFloat(val)));
+                      }} 
                       className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" 
-                      placeholder="0,00" 
+                      placeholder="0" 
                     />
                   </div>
                 </div>
@@ -619,7 +603,6 @@ export default function App() {
                 </div>
               </div>
 
-              /* STREAMING_CHUNK:Configuración de cuotas e intereses... */
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tasa Interés (% Mensual)</label>
@@ -682,7 +665,6 @@ export default function App() {
           </div>
         </section>
 
-        /* STREAMING_CHUNK:Renderizando Pestañas de Resultados y Resumen... */
         <section className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-2 rounded-2xl shadow-sm border border-slate-200 gap-3">
             <div className="flex space-x-1.5 bg-slate-100 p-1 rounded-xl">
@@ -733,11 +715,11 @@ export default function App() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Precio Venta:</span>
-                    <strong className="text-slate-800">{formatCurrency(montoVenta)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(realMontoVenta)}</strong>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Pago Inicial:</span>
-                    <strong className="text-slate-800">{formatCurrency(montoInicial)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(realMontoInicial)}</strong>
                   </div>
                   
                   {/* Filas de datos de control para las comisiones */}
@@ -747,7 +729,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Gastos Administrativos:</span>
-                    <strong className="text-slate-800">{formatCurrency(gastosAdmin)}</strong>
+                    <strong className="text-slate-800">{formatCurrency(Number(gastosAdmin) || 0)}</strong>
                   </div>
 
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
@@ -766,11 +748,11 @@ export default function App() {
                 <div className="flex flex-col space-y-4 py-2">
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-500">Pago Inicial</span>
-                      <span className="font-bold">{formatCurrency(montoInicial)}</span>
+                      <span className="text-slate-500">Pago Inicial (Pago Inicial)</span>
+                      <span className="font-bold">{formatCurrency(realMontoInicial)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full" style={{ width: `${(montoInicial/montoTotalReferencia)*100}%` }} />
+                      <div className="bg-emerald-500 h-full" style={{ width: `${(realMontoInicial/montoTotalReferencia)*100}%` }} />
                     </div>
                   </div>
                   <div>
@@ -796,7 +778,6 @@ export default function App() {
             </div>
           )}
 
-          /* STREAMING_CHUNK:Renderizando Tabla de Amortización... */
           {activeTab === 'tabla' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
               <div className="overflow-x-auto">
@@ -843,7 +824,6 @@ export default function App() {
         <p>© 2026 Plan de Financiamiento JP.</p>
       </footer>
 
-      /* STREAMING_CHUNK:Modales y Toasts del sistema... */
       {showPdfModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 text-center overflow-hidden">
@@ -875,4 +855,3 @@ export default function App() {
     </div>
   );
 }
-/*//creado por jose perozo*/
