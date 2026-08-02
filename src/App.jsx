@@ -2,47 +2,25 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Símbolos de Monedas restringidos a Dólares y Bolívares
+// Símbolos de Monedas y configuración de formato regional (EE.UU. para USD)
 const CURRENCIES = {
   USD: { symbol: '$', label: 'USD (Dólares)', locale: 'en-US' },
   VES: { symbol: 'Bs.', label: 'VES (Bolívares)', locale: 'es-VE' }
 };
 
 export default function App() {
-  /* STREAMING_CHUNK:Inicializando estados y funciones de formateo... */
   // --- Estados de Datos de Entrada (Formulario) ---
   const [clienteName, setClienteName] = useState('');
   const [vehiculoModelo, setVehiculoModelo] = useState('');
   
-  // Funciones de formateo local (puntos para miles, comas para decimales)
-  const formatNumToLocal = (val) => {
-    if (val === '' || val === null || val === undefined) return '';
-    let clean = val.toString().replace(/[^0-9,]/g, '');
-    const parts = clean.split(',');
-    if (parts.length > 2) clean = parts[0] + ',' + parts.slice(1).join('');
-    let [integer, decimal] = clean.split(',');
-    if (integer) integer = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    else if (clean.startsWith(',')) integer = '0';
-    return decimal !== undefined ? `${integer},${decimal}` : integer;
-  };
-
-  const parseLocalToNum = (val) => {
-    if (!val) return 0;
-    return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
-  };
-
-  // Estados visuales enmascarados para Monedas (con puntos y comas)
-  const [montoVentaStr, setMontoVentaStr] = useState('42.000');
-  const [montoInicialStr, setMontoInicialStr] = useState('12.000');
-  const montoVenta = parseLocalToNum(montoVentaStr);
-  const montoInicial = parseLocalToNum(montoInicialStr);
+  // Campos numéricos nativos
+  const [montoVenta, setMontoVenta] = useState(42000);
+  const [montoInicial, setMontoInicial] = useState(12000);
   
   // Estados para comisiones y gastos
   const [porcentajeFlat, setPorcentajeFlat] = useState(0); 
-  const [gastosAdminStr, setGastosAdminStr] = useState('');
-  const gastosAdmin = parseLocalToNum(gastosAdminStr);
+  const [gastosAdmin, setGastosAdmin] = useState(0);
 
-  /* STREAMING_CHUNK:Inicializando estados secundarios del crédito... */
   const [tasaMensual, setTasaMensual] = useState(1.5); 
   const [plazo, setPlazo] = useState(36); 
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().substring(0, 10)); 
@@ -73,11 +51,12 @@ export default function App() {
     }, 4500);
   };
 
-  /* STREAMING_CHUNK:Lógica matemática de cálculos y comisiones... */
   // --- CÁLCULOS PRINCIPALES ---
   // 1. Monto base (Vehículo - Pago Inicial)
   const montoFinanciarBase = useMemo(() => {
-    return Math.max(0, montoVenta - montoInicial);
+    const venta = Number(montoVenta) || 0;
+    const inicial = Number(montoInicial) || 0;
+    return Math.max(0, venta - inicial);
   }, [montoVenta, montoInicial]);
 
   // 2. Comisión Flat calculada sobre el monto base
@@ -88,9 +67,11 @@ export default function App() {
 
   // 3. Monto total a financiar (Base + Comisión Flat + Gastos Administrativos)
   const montoFinanciar = useMemo(() => {
-    return montoFinanciarBase + montoComisionFlat + gastosAdmin;
+    const gastos = Number(gastosAdmin) || 0;
+    return montoFinanciarBase + montoComisionFlat + gastos;
   }, [montoFinanciarBase, montoComisionFlat, gastosAdmin]);
 
+  // Formateador Global (Aplica comas para miles y puntos para decimales en USD)
   const formatCurrency = (value) => {
     const cfg = CURRENCIES[currencyKey] || CURRENCIES.USD;
     return new Intl.NumberFormat(cfg.locale, {
@@ -98,10 +79,10 @@ export default function App() {
       currency: currencyKey,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(value);
+    }).format(value || 0);
   };
 
-  /* STREAMING_CHUNK:Lógica de la tabla de amortización... */
+  // --- LÓGICA DE AMORTIZACIÓN ---
   const financialData = useMemo(() => {
     const P = montoFinanciar;
     const r = (Number(tasaMensual) || 0) / 100;
@@ -149,7 +130,7 @@ export default function App() {
       }
     } 
     else {
-      // Plan B con fórmula especifica 
+      // Plan B (Abono fijo a capital)
       const interesMensualFijo = P * r;
       const abonoCapitalFijo = P / n;
       const cuotaFijaB = abonoCapitalFijo + interesMensualFijo; 
@@ -198,7 +179,7 @@ export default function App() {
     }
   };
 
-  /* STREAMING_CHUNK:Generador del reporte PDF... */
+  // --- GENERACIÓN DEL PDF ---
   const exportToPDF = () => {
     setPdfGenerating(true);
     showToast('Procesando datos y estructurando reporte...', 'info');
@@ -206,11 +187,10 @@ export default function App() {
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      // Tema de color Navy por defecto
       const primaryColorRGB = [15, 23, 42];
       const accentColorRGB = [37, 99, 235];
 
-      // --- 1. ENCABEZADO ---
+      // Encabezado
       doc.setFillColor(...primaryColorRGB);
       doc.rect(0, 0, 210, 8, 'F');
       
@@ -240,12 +220,14 @@ export default function App() {
       doc.setLineWidth(0.5);
       doc.line(15, 51, 195, 51);
 
-      // --- 2. RESUMEN TÉCNICO ---
+      // Resumen Técnico
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(...primaryColorRGB);
       doc.text('1. INFORMACIÓN DE LA OPERACIÓN', 15, 58);
 
+      const realMontoVenta = Number(montoVenta) || 0;
+      const realMontoInicial = Number(montoInicial) || 0;
       const pFlat = Number(porcentajeFlat) || 0;
 
       const infoData = [
@@ -254,12 +236,12 @@ export default function App() {
           { content: 'VEHÍCULO COTIZADO:', fontStyle: 'bold', textColor: [71, 85, 105] }, vehiculoModelo
         ],
         [
-          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoVenta),
-          { content: 'PAGO INICIAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(montoInicial)} (${((montoInicial/(montoVenta || 1))*100).toFixed(1)}%)`
+          { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(realMontoVenta),
+          { content: 'PAGO INICIAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
         ],
         [
           { content: `COMISIÓN FLAT (${pFlat}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlat),
-          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(gastosAdmin)
+          { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(Number(gastosAdmin) || 0)
         ],
         [
           { content: 'MONTO TOTAL A FINANCIAR:', fontStyle: 'bold', textColor: [15, 23, 42] }, formatCurrency(montoFinanciar),
@@ -281,7 +263,7 @@ export default function App() {
 
       let currentY = doc.lastAutoTable.finalY + 4;
 
-      // --- 3. DESTACADO FINANCIERO ---
+      // Destacado Financiero
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(...accentColorRGB);
       doc.setLineWidth(0.4);
@@ -317,8 +299,7 @@ export default function App() {
         currentY += (splitText.length * 4) + 6;
       }
 
-      /* STREAMING_CHUNK:Tabla PDF y Finalización de Documento... */
-      // --- 4. TABLA DE AMORTIZACIÓN ---
+      // Tabla de Amortización
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(...primaryColorRGB);
@@ -327,7 +308,7 @@ export default function App() {
 
       const formatPDFValue = (val) => {
         const cfg = CURRENCIES[currencyKey] || CURRENCIES.USD;
-        return new Intl.NumberFormat(cfg.locale, { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+        return new Intl.NumberFormat(cfg.locale, { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
       };
 
       const headPDF = [['CUOTA NRO.', 'MES VENCIMIENTO', 'SALDO CAPITAL', 'ABONO A CAPITAL', 'INTERESES ORDINARIOS', 'CUOTA A PAGAR']];
@@ -343,7 +324,7 @@ export default function App() {
 
       const footPDF = [[
         { content: 'TOTALES', colSpan: 2, styles: { halign: 'center' } },
-        { content: '', styles: { halign: 'right' } }, // Saldo Capital no se suma
+        { content: '', styles: { halign: 'right' } },
         { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(montoFinanciar)}`, styles: { halign: 'right' } }, 
         { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(financialData.totalIntereses)}`, styles: { halign: 'right' } },
         { content: `${CURRENCIES[currencyKey].symbol}${formatPDFValue(financialData.totalPagado)}`, styles: { halign: 'right', fontStyle: 'bold' } }
@@ -361,13 +342,13 @@ export default function App() {
           doc.setFontSize(7.5); doc.setFont('Helvetica', 'normal'); doc.setTextColor(148, 163, 184);
           doc.setDrawColor(241, 245, 249); doc.setLineWidth(0.3); doc.line(15, 280, 195, 280);
           doc.text('*Precio sujeto a cambio sin previo aviso.', 15, 284);
-          doc.text(`Página ${data.pageNumber} de${doc.internal.getNumberOfPages()}`, 195, 284, { align: 'right' });
+          doc.text(`Página ${data.pageNumber} de ${doc.internal.getNumberOfPages()}`, 195, 284, { align: 'right' });
         }
       });
 
       let finalY = doc.lastAutoTable.finalY;
 
-      // --- 5. FIRMAS ---
+      // Firmas
       if (finalY > 230) { doc.addPage(); finalY = 25; } else { finalY += 15; }
 
       doc.setFont('Helvetica', 'bold');
@@ -409,7 +390,6 @@ export default function App() {
     }
   };
 
-  /* STREAMING_CHUNK:Eventos de interfaz... */
   const triggerDirectDownload = () => {
     if (!pendingPdfBlobUrl) return;
     const downloadLink = document.createElement('a');
@@ -427,9 +407,11 @@ export default function App() {
     if (!newWindow) window.location.href = pendingPdfBlobUrl;
   };
 
-  const montoTotalReferencia = (montoVenta + montoComisionFlat + gastosAdmin + financialData.totalIntereses) || 1;
+  const realMontoVenta = Number(montoVenta) || 0;
+  const realMontoInicial = Number(montoInicial) || 0;
+  const montoTotalReferencia = (realMontoVenta + montoComisionFlat + (Number(gastosAdmin) || 0) + financialData.totalIntereses) || 1;
 
-  /* STREAMING_CHUNK:Renderizado principal (JSX)... */
+  // --- RENDERIZADO VISUAL ---
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
       <header className="bg-slate-900 text-white shadow-xl py-5 px-6 transition-colors duration-300">
@@ -510,20 +492,20 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Campos de dinero */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto de Venta</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={montoVentaStr} 
+                      type="number" 
+                      value={montoVenta} 
                       onChange={(e) => { 
-                        const formatted = formatNumToLocal(e.target.value);
-                        setMontoVentaStr(formatted); 
-                        const numVenta = parseLocalToNum(formatted);
-                        if (montoInicial > numVenta) setMontoInicialStr(formatted); 
+                        const val = e.target.value;
+                        if(val === '') { setMontoVenta(''); return; }
+                        const num = parseFloat(val); 
+                        setMontoVenta(num); 
+                        if ((Number(montoInicial) || 0) > num) setMontoInicial(num); 
                       }} 
                       className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold" 
                     />
@@ -534,15 +516,16 @@ export default function App() {
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={montoInicialStr} 
+                      type="number" 
+                      value={montoInicial} 
                       onChange={(e) => { 
-                        const formatted = formatNumToLocal(e.target.value);
-                        const numInicial = parseLocalToNum(formatted); 
-                        if (numInicial <= montoVenta) { 
-                          setMontoInicialStr(formatted); 
+                        const val = e.target.value;
+                        if(val === '') { setMontoInicial(''); return; }
+                        const num = parseFloat(val); 
+                        if (num <= (Number(montoVenta) || 0)) { 
+                          setMontoInicial(num); 
                         } else { 
-                          setMontoInicialStr(montoVentaStr); 
+                          setMontoInicial(Number(montoVenta) || 0); 
                           showToast('El Pago Inicial no puede superar el costo.', 'warning'); 
                         } 
                       }} 
@@ -556,21 +539,20 @@ export default function App() {
                 <div>
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="text-slate-500">Pago Inicial:</span>
-                    <span className="font-bold text-emerald-600">{((montoInicial / (montoVenta || 1)) * 100).toFixed(1)}% del valor</span>
+                    <span className="font-bold text-emerald-600">{((realMontoInicial / (realMontoVenta || 1)) * 100).toFixed(1)}% del valor</span>
                   </div>
                   <input 
                     type="range" 
                     min="0" 
-                    max={montoVenta} 
+                    max={realMontoVenta} 
                     step="1" 
-                    value={montoInicial} 
-                    onChange={(e) => setMontoInicialStr(formatNumToLocal(e.target.value))} 
+                    value={realMontoInicial} 
+                    onChange={(e) => setMontoInicial(parseFloat(e.target.value) || 0)} 
                     className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" 
                   />
                 </div>
               </div>
 
-              {/* SECCIÓN NUEVA: Gastos extra que se suman al financiamiento */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flat (%)</label>
@@ -600,11 +582,15 @@ export default function App() {
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 text-xs font-bold">{CURRENCIES[currencyKey].symbol}</span>
                     <input 
-                      type="text" 
-                      value={gastosAdminStr} 
-                      onChange={(e) => setGastosAdminStr(formatNumToLocal(e.target.value))} 
+                      type="number" 
+                      value={gastosAdmin} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if(val === '') { setGastosAdmin(''); return; }
+                        setGastosAdmin(Math.max(0, parseFloat(val)));
+                      }} 
                       className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" 
-                      placeholder="0,00" 
+                      placeholder="0" 
                     />
                   </div>
                 </div>
@@ -620,7 +606,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Configuración de cuotas e intereses */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tasa Interés (% Mensual)</label>
@@ -683,7 +668,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Pestañas de Resultados y Resumen */}
         <section className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-2 rounded-2xl shadow-sm border border-slate-200 gap-3">
             <div className="flex space-x-1.5 bg-slate-100 p-1 rounded-xl">
@@ -797,7 +781,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Tabla de Amortización */}
           {activeTab === 'tabla' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
               <div className="overflow-x-auto">
@@ -844,7 +827,6 @@ export default function App() {
         <p>© 2026 Plan de Financiamiento JP.</p>
       </footer>
 
-      {/* Modales y Toasts del sistema */}
       {showPdfModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 text-center overflow-hidden">
