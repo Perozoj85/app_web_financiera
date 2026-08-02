@@ -16,7 +16,7 @@ export default function App() {
   const [montoInicial, setMontoInicial] = useState(12000);
   
   // Estados para comisiones y gastos
-  const [porcentajeFlash, setPorcentajeFlash] = useState(0); 
+  const [porcentajeFlat, setPorcentajeFlat] = useState(0); 
   const [gastosAdmin, setGastosAdmin] = useState(0);
 
   const [tasaMensual, setTasaMensual] = useState(1.5); 
@@ -50,24 +50,24 @@ export default function App() {
   };
 
   // --- CÁLCULOS PRINCIPALES ---
-  // 1. Monto base (Vehículo - Enganche) Aseguramos que los inputs puedan ser texto vacío temporalmente
+  // 1. Monto base (Vehículo - Pago Inicial) Aseguramos que los inputs puedan ser texto vacío temporalmente
   const montoFinanciarBase = useMemo(() => {
     const venta = Number(montoVenta) || 0;
     const inicial = Number(montoInicial) || 0;
     return Math.max(0, venta - inicial);
   }, [montoVenta, montoInicial]);
 
-  // 2. Comisión Flash calculada sobre el monto base
-  const montoComisionFlash = useMemo(() => {
-    const flash = Number(porcentajeFlash) || 0;
-    return montoFinanciarBase * (flash / 100);
-  }, [montoFinanciarBase, porcentajeFlash]);
+  // 2. Comisión Flat calculada sobre el monto base
+  const montoComisionFlat = useMemo(() => {
+    const Flat = Number(porcentajeFlat) || 0;
+    return montoFinanciarBase * (Flat / 100);
+  }, [montoFinanciarBase, porcentajeFlat]);
 
-  // 3. Monto total a financiar (Base + Comisión Flash + Gastos Administrativos)
+  // 3. Monto total a financiar (Base + Comisión Flat + Gastos Administrativos)
   const montoFinanciar = useMemo(() => {
     const gastos = Number(gastosAdmin) || 0;
-    return montoFinanciarBase + montoComisionFlash + gastos;
-  }, [montoFinanciarBase, montoComisionFlash, gastosAdmin]);
+    return montoFinanciarBase + montoComisionFlat + gastos;
+  }, [montoFinanciarBase, montoComisionFlat, gastosAdmin]);
 
   const formatCurrency = (value) => {
     const cfg = CURRENCIES[currencyKey] || CURRENCIES.USD;
@@ -224,7 +224,7 @@ export default function App() {
 
       const realMontoVenta = Number(montoVenta) || 0;
       const realMontoInicial = Number(montoInicial) || 0;
-      const pFlash = Number(porcentajeFlash) || 0;
+      const pFlat = Number(porcentajeFlat) || 0;
 
       const infoData = [
         [
@@ -233,10 +233,10 @@ export default function App() {
         ],
         [
           { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(realMontoVenta),
-          { content: 'ENGANCHE (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
+          { content: 'Pago Inicial (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
         ],
         [
-          { content: `COMISIÓN FLASH (${pFlash}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlash),
+          { content: `COMISIÓN Flat (${pFlat}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlat),
           { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(Number(gastosAdmin) || 0)
         ],
         [
@@ -405,7 +405,7 @@ export default function App() {
 
   const realMontoVenta = Number(montoVenta) || 0;
   const realMontoInicial = Number(montoInicial) || 0;
-  const montoTotalReferencia = (realMontoVenta + montoComisionFlash + (Number(gastosAdmin) || 0) + financialData.totalIntereses) || 1;
+  const montoTotalReferencia = (realMontoVenta + montoComisionFlat + (Number(gastosAdmin) || 0) + financialData.totalIntereses) || 1;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
@@ -521,7 +521,7 @@ export default function App() {
                           setMontoInicial(num); 
                         } else { 
                           setMontoInicial(Number(montoVenta) || 0); 
-                          showToast('El enganche no puede superar el costo.', 'warning'); 
+                          showToast('El Pago Inicial no puede superar el costo.', 'warning'); 
                         } 
                       }} 
                       className="w-full pl-7 pr-2 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-emerald-700" 
@@ -533,7 +533,7 @@ export default function App() {
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col gap-3">
                 <div>
                   <div className="flex justify-between text-[11px] mb-1">
-                    <span className="text-slate-500">Enganche:</span>
+                    <span className="text-slate-500">Pago Inicial:</span>
                     <span className="font-bold text-emerald-600">{((realMontoInicial / (realMontoVenta || 1)) * 100).toFixed(1)}% del valor</span>
                   </div>
                   {/* Slider arreglado: con step="1" para que no salte, ni fuerce el redondeo en bloques raros */}
@@ -552,25 +552,25 @@ export default function App() {
               {/* SECCIÓN NUEVA: Gastos extra que se suman al financiamiento */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flash (%)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flat (%)</label>
                   <div className="relative">
                     <input 
                       type="number" 
                       step="0.1" 
-                      value={porcentajeFlash} 
+                      value={porcentajeFlat} 
                       onChange={(e) => {
                         const val = e.target.value;
-                        if(val === '') { setPorcentajeFlash(''); return; }
-                        setPorcentajeFlash(Math.max(0, parseFloat(val)));
+                        if(val === '') { setPorcentajeFlat(''); return; }
+                        setPorcentajeFlat(Math.max(0, parseFloat(val)));
                       }} 
                       className="w-full pl-3 pr-7 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold text-slate-700" 
                       placeholder="0.0" 
                     />
                     <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs font-bold">%</span>
                   </div>
-                  {Number(porcentajeFlash) > 0 && (
+                  {Number(porcentajeFlat) > 0 && (
                     <div className="text-[10px] text-slate-500 font-medium mt-1 text-right">
-                      + {formatCurrency(montoComisionFlash)}
+                      + {formatCurrency(montoComisionFlat)}
                     </div>
                   )}
                 </div>
@@ -724,8 +724,8 @@ export default function App() {
                   
                   {/* Filas de datos de control para las comisiones */}
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500">Comisión Flash ({Number(porcentajeFlash) || 0}%):</span>
-                    <strong className="text-slate-800">{formatCurrency(montoComisionFlash)}</strong>
+                    <span className="text-slate-500">Comisión Flat ({Number(porcentajeFlat) || 0}%):</span>
+                    <strong className="text-slate-800">{formatCurrency(montoComisionFlat)}</strong>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500">Gastos Administrativos:</span>
@@ -748,7 +748,7 @@ export default function App() {
                 <div className="flex flex-col space-y-4 py-2">
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-500">Enganche (Pago Inicial)</span>
+                      <span className="text-slate-500">Pago Inicial (Pago Inicial)</span>
                       <span className="font-bold">{formatCurrency(realMontoInicial)}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
