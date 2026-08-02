@@ -233,10 +233,10 @@ export default function App() {
         ],
         [
           { content: 'VALOR VEHÍCULO:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(realMontoVenta),
-          { content: 'Pago Inicial (INICIAL):', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
+          { content: 'PAGO INICIAL:', fontStyle: 'bold', textColor: [71, 85, 105] }, `${formatCurrency(realMontoInicial)} (${((realMontoInicial/(realMontoVenta || 1))*100).toFixed(1)}%)`
         ],
         [
-          { content: `COMISIÓN Flat (${pFlat}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlat),
+          { content: `COMISIÓN FLAT (${pFlat}%):`, fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(montoComisionFlat),
           { content: 'GASTOS ADMINISTRATIVOS:', fontStyle: 'bold', textColor: [71, 85, 105] }, formatCurrency(Number(gastosAdmin) || 0)
         ],
         [
