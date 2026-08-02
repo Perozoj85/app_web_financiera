@@ -392,7 +392,7 @@ export default function App() {
       doc.setFont('Helvetica', 'bold');
       doc.text(concesionariaName.toUpperCase(), 155, finalY + 30, { align: 'center' });
 
-      const cleanFileName = `Plan de Financiamiento ${clienteName.replace(/\s+/g, ' ') || 'Auto'}.pdf`;
+      const cleanFileName = `Plan de Financimiento ${clienteName.replace(/\s+/g, ' ') || 'Auto'}.pdf`;
       const blob = doc.output('blob');
       const blobURL = URL.createObjectURL(blob);
 
@@ -429,7 +429,7 @@ export default function App() {
 
   const montoTotalReferencia = (montoVenta + montoComisionFlat + gastosAdmin + financialData.totalIntereses) || 1;
 
-  ///STREAMING_CHUNK:Renderizado principal (JSX)... 
+  /* STREAMING_CHUNK:Renderizado principal (JSX)... */
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
       <header className="bg-slate-900 text-white shadow-xl py-5 px-6 transition-colors duration-300">
@@ -510,7 +510,7 @@ export default function App() {
                 </div>
               </div>
 
-              /// STREAMING_CHUNK:Campos enmascarados de dinero... 
+              {/* Campos de dinero */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monto de Venta</label>
@@ -570,6 +570,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* SECCIÓN NUEVA: Gastos extra que se suman al financiamiento */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Comisión Flat (%)</label>
@@ -619,7 +620,7 @@ export default function App() {
                 </div>
               </div>
 
-              /// STREAMING_CHUNK:Configuración de cuotas e intereses... 
+              {/* Configuración de cuotas e intereses */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tasa Interés (% Mensual)</label>
@@ -682,7 +683,7 @@ export default function App() {
           </div>
         </section>
 
-        /// STREAMING_CHUNK:Renderizando Pestañas de Resultados y Resumen...
+        {/* Pestañas de Resultados y Resumen */}
         <section className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-2 rounded-2xl shadow-sm border border-slate-200 gap-3">
             <div className="flex space-x-1.5 bg-slate-100 p-1 rounded-xl">
@@ -796,7 +797,7 @@ export default function App() {
             </div>
           )}
 
-          /// STREAMING_CHUNK:Renderizando Tabla de Amortización...
+          {/* Tabla de Amortización */}
           {activeTab === 'tabla' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
               <div className="overflow-x-auto">
@@ -843,7 +844,7 @@ export default function App() {
         <p>© 2026 Plan de Financiamiento JP.</p>
       </footer>
 
-     /// STREAMING_CHUNK:Modales y Toasts del sistema... /
+      {/* Modales y Toasts del sistema */}
       {showPdfModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 text-center overflow-hidden">
@@ -875,4 +876,4 @@ export default function App() {
     </div>
   );
 }
-///creado por jose perozo
+///Trabajado por jose perozo
